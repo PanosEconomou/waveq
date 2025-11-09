@@ -24,7 +24,7 @@ C: Clear, i.e. set the wavefunction to zero
 
 Here are some pictures from this
 
-| ![setup](Media/Oscillator-Setup.gif)              | ![ball](Media/ball.gif)           |
+| ![setup](media/Oscillator-Setup.gif)              | ![ball](media/ball.gif)           |
 | ------------------------------------------------- | --------------------------------- |
 | ![2-sources-complex](media/2-sources-complex.gif) | ![2-sources](media/2-sources.gif) |
 
