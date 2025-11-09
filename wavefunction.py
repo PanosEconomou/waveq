@@ -7,7 +7,7 @@ ti.init(arch = ti.gpu, fast_math=True)
 n       = 700
 dx      = 1/n
 dt      = 2e-1 * (2*dx*dx)
-V_char  = 1e5
+V_char  = 2e5
 wave    = ti.Vector.field(2, ti.f32, (n,n))
 wavenew = ti.Vector.field(2, ti.f32, (n,n))
 pixels  = ti.Vector.field(3, ti.f32, (n,n))
@@ -23,9 +23,9 @@ def fill_V(V:ti.template(),n:int):
     for x,y in V:
         X = (2*x-n)/n
         Y = (2*y-n)/n
-        if X**2 + Y**2 <(0.3)**2:
-            V[x,y] = V_char
-        # V[x,y] = V_char*(X**2 + Y**2)
+        # if X**2 + Y**2 <(0.3)**2:
+        #     V[x,y] = V_char
+        V[x,y] = V_char*(X**2 + Y**2)
 
 @ti.kernel
 def initialize(x:float, y:float, px:float, py:float, sx:float, sy:float):
@@ -75,6 +75,7 @@ if __name__ == "__main__":
     potent  = False
     held_P  = False
     held_S  = False
+    held_R  = False
     bright  = 1
     brightC = 0.1
 
@@ -97,6 +98,10 @@ if __name__ == "__main__":
             held_P  = False
             potent  = not potent
             bright  = 1
+
+        if held_R and not window.is_pressed('r'):
+            held_R  = False
+            initialize(0.6,0,-v,0,s,s)
         
         if window.is_pressed(ti.GUI.UP):
             if bright>1-brightC: bright -= brightC
@@ -106,6 +111,7 @@ if __name__ == "__main__":
 
         held_S = window.is_pressed(ti.GUI.SPACE)
         held_P = window.is_pressed('p')
+        held_R = window.is_pressed('r')
 
         draw(n,dt,dx,color,potent,bright)
 
