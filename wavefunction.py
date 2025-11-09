@@ -4,7 +4,7 @@ ti.reset()
 ti.init(arch = ti.gpu, fast_math=True)
 
 # Number of pixels in our grid
-n       = 700
+n       = 800
 dx      = 1/n
 dt      = 2e-1 * (2*dx*dx)
 V_char  = 2e5
@@ -23,8 +23,7 @@ def fill_V(V:ti.template(),n:int):
     for x,y in V:
         X = (2*x-n)/n
         Y = (2*y-n)/n
-        # if X**2 + Y**2 <(0.3)**2:
-        #     V[x,y] = V_char
+        # if X**2 + Y**2 <(0.3)**2: V[x,y] = -V_char
         V[x,y] = V_char*(X**2 + Y**2)
 
 @ti.kernel
@@ -56,15 +55,14 @@ def add_pulse(x:ti.f32,y:ti.f32,sx:ti.f32,sy:ti.f32,p:ti.f32):
 @ti.kernel
 def draw(n:int, dt:float, dx:float, color:bool, potential:bool, brightness:float):
     h = dt/(2*dx*dx)
-    for i,j in ti.ndrange((1, n-1), (1, n-1)): #wave:
+    for i,j in ti.ndrange((1, n-1), (1, n-1)):
         wavenew[i,j][0] = wave[i,j][0] - (- 4*h - dt*V[i,j])*wave[i,j][1] - h*(wave[i+1,j][1] + wave[i-1,j][1] + wave[i,j+1][1] + wave[i,j-1][1])
     
-    for i,j in ti.ndrange((1, n-1), (1, n-1)):# wave:
+    for i,j in ti.ndrange((1, n-1), (1, n-1)):
         wavenew[i,j][1] = wave[i,j][1] + (- 4*h - dt*V[i,j])*wavenew[i,j][0] + h*(wavenew[i+1,j][0] + wavenew[i-1,j][0] + wavenew[i,j+1][0] + wavenew[i,j-1][0])
 
     # for i,j in pixels:
-        pixels[i,j] = (1-color)*(wavenew[i,j][0]**2 + wave[i,j][1]*wavenew[i,j][1]) + potential*ti.Vector([54, 14, 97])*ti.abs(V[i,j]/V_char)/255 + ti.Vector([wavenew[i,j][0], 0, wavenew[i,j][1]],dt=ti.f32)*color 
-        pixels[i,j] /= brightness
+        pixels[i,j] = ((1-color)*(wavenew[i,j][0]**2 + wave[i,j][1]*wavenew[i,j][1]) + ti.Vector([wavenew[i,j][0], 0, wavenew[i,j][1]],dt=ti.f32)*color)/brightness + potential*ti.Vector([54, 14, 97])*ti.abs(V[i,j]/V_char)/255 
         wave[i,j]   = wavenew[i,j]
 
 
@@ -97,7 +95,6 @@ if __name__ == "__main__":
         if held_P and not window.is_pressed('p'):
             held_P  = False
             potent  = not potent
-            bright  = 1
 
         if held_R and not window.is_pressed('r'):
             held_R  = False
@@ -107,7 +104,7 @@ if __name__ == "__main__":
             if bright>1-brightC: bright -= brightC
 
         if window.is_pressed(ti.GUI.DOWN):
-            bright += brightC
+            if bright<100: bright += brightC
 
         held_S = window.is_pressed(ti.GUI.SPACE)
         held_P = window.is_pressed('p')
