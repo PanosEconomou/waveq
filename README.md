@@ -22,5 +22,9 @@ C: Clear, i.e. set the wavefunction to zero
 [MOUSE]: Clicking (and/or dragging) the mouse disturbs the wavefunction by a pulse. 
 ```
 
+Here are some pictures from this
 
+| ![setup](Media/Oscillator-Setup.gif)              | ![ball](Media/ball.gif)           |
+| ------------------------------------------------- | --------------------------------- |
+| ![2-sources-complex](media/2-sources-complex.gif) | ![2-sources](media/2-sources.gif) |
 
