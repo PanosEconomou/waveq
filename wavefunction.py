@@ -13,9 +13,8 @@ wavenew = ti.Vector.field(2, ti.f32, (n,n))
 pixels  = ti.Vector.field(3, ti.f32, (n,n))
 V       = ti.field(ti.f32, (n,n))
 A       = ti.field(dtype=ti.f32, shape=())
-gui     = ti.GUI("2D Waves", res = n, fast_gui=False)
 window  = ti.ui.Window("2D Waves", res=(n, n), fps_limit=400)
-gui = window.get_canvas()
+gui     = window.get_canvas()
 
 
 @ti.kernel
