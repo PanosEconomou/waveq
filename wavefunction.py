@@ -4,16 +4,20 @@ ti.reset()
 ti.init(arch = ti.gpu, fast_math=True)
 
 # Number of pixels in our grid
-n       = 800
+upscale = 1
+dim     = 800
+n       = upscale*dim
+steps   = 5
 dx      = 1/n
 dt      = 2e-1 * (2*dx*dx)
 V_char  = 2e5
 wave    = ti.Vector.field(2, ti.f32, (n,n))
 wavenew = ti.Vector.field(2, ti.f32, (n,n))
 pixels  = ti.Vector.field(3, ti.f32, (n,n))
+pixelsL = ti.Vector.field(3, ti.f32, dim)
 V       = ti.field(ti.f32, (n,n))
 A       = ti.field(dtype=ti.f32, shape=())
-window  = ti.ui.Window("2D Waves", res=(n, n), fps_limit=400)
+window  = ti.ui.Window("2D Waves", res=(dim, dim), fps_limit=400)
 gui     = window.get_canvas()
 
 
@@ -54,20 +58,30 @@ def add_pulse(x:ti.f32,y:ti.f32,sx:ti.f32,sy:ti.f32,p:ti.f32):
 @ti.kernel
 def draw(n:int, dt:float, dx:float, color:bool, potential:bool, brightness:float):
     h = dt/(2*dx*dx)
-    for i,j in ti.ndrange((1, n-1), (1, n-1)):
-        wavenew[i,j][0] = wave[i,j][0] - (- 4*h - dt*V[i,j])*wave[i,j][1] - h*(wave[i+1,j][1] + wave[i-1,j][1] + wave[i,j+1][1] + wave[i,j-1][1])
-    
-    for i,j in ti.ndrange((1, n-1), (1, n-1)):
-        wavenew[i,j][1] = wave[i,j][1] + (- 4*h - dt*V[i,j])*wavenew[i,j][0] + h*(wavenew[i+1,j][0] + wavenew[i-1,j][0] + wavenew[i,j+1][0] + wavenew[i,j-1][0])
+    for step in ti.static(range(steps)):
+        for i,j in ti.ndrange((1, n-1), (1, n-1)):
+            wavenew[i,j][0] = wave[i,j][0] - (- 4*h - dt*V[i,j])*wave[i,j][1] - h*(wave[i+1,j][1] + wave[i-1,j][1] + wave[i,j+1][1] + wave[i,j-1][1])
+        
+        for i,j in ti.ndrange((1, n-1), (1, n-1)):
+            wavenew[i,j][1] = wave[i,j][1] + (- 4*h - dt*V[i,j])*wavenew[i,j][0] + h*(wavenew[i+1,j][0] + wavenew[i-1,j][0] + wavenew[i,j+1][0] + wavenew[i,j-1][0])
+            wave[i,j]   = wavenew[i,j]
 
-    # for i,j in pixels:
+    for i,j in pixels:
         pixels[i,j] = ((1-color)*(wavenew[i,j][0]**2 + wave[i,j][1]*wavenew[i,j][1]) + ti.Vector([wavenew[i,j][0], 0, wavenew[i,j][1]],dt=ti.f32)*color)/brightness + potential*ti.Vector([54, 14, 97])*ti.abs(V[i,j]/V_char)/255 
-        wave[i,j]   = wavenew[i,j]
 
+
+# Implement some antialiasing
+@ti.kernel
+def downsample():
+    for i, j in pixelsL:
+        acc = ti.math.vec3(0.0)
+        for di, dj in ti.ndrange(upscale, upscale):
+            acc += pixels[i * upscale + di, j * upscale + dj]
+        pixelsL[i, j] = acc / (upscale * upscale)
 
 if __name__ == "__main__":
     v       = 100
-    s       = 1e-1
+    s       = 8e1/n
     color   = False
     potent  = False
     held_P  = False
