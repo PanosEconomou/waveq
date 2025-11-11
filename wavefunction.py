@@ -1,5 +1,5 @@
 import taichi as ti
-from taichi.math import exp, cos, sin, pi
+from taichi.math import exp, cos, sin, sign, atan2, pi
 ti.reset()
 ti.init(arch = ti.gpu, fast_math=True)
 
@@ -10,7 +10,7 @@ n       = upscale*dim
 steps   = 5
 dx      = 1/n
 dt      = 2e-1 * (2*dx*dx)
-V_char  = 2e5
+V_char  = 1e5
 wave    = ti.Vector.field(2, ti.f32, (n,n))
 wavenew = ti.Vector.field(2, ti.f32, (n,n))
 pixels  = ti.Vector.field(3, ti.f32, (n,n))
@@ -22,12 +22,19 @@ gui     = window.get_canvas()
 
 
 @ti.kernel
-def fill_V(V:ti.template(),n:int):
+def fill_V(V:ti.template(),i:int):
+    V.fill(0)
     for x,y in V:
         X = (2*x-n)/n
         Y = (2*y-n)/n
-        # if X**2 + Y**2 <(0.3)**2: V[x,y] = -V_char
-        V[x,y] = V_char*(X**2 + Y**2)
+        if i==0:
+            if X**2 + Y**2 <(0.3)**2: V[x,y] = -V_char
+        if i==1:
+            if X**2 + Y**2 <(0.3)**2: V[x,y] = V_char
+        if i==2:
+            V[x,y] = V_char*(X**2 + Y**2)
+        if i==3:
+            V[x,y] = V_char/4*(cos(X*(2.1*pi)) + cos(Y*(2.1*pi))) + V_char*(X**2 + Y**2)**2
 
 @ti.kernel
 def initialize(x:float, y:float, px:float, py:float, sx:float, sy:float):
@@ -67,7 +74,7 @@ def draw(n:int, dt:float, dx:float, color:bool, potential:bool, brightness:float
             wave[i,j]   = wavenew[i,j]
 
     for i,j in pixels:
-        pixels[i,j] = ((1-color)*(wavenew[i,j][0]**2 + wave[i,j][1]*wavenew[i,j][1]) + ti.Vector([wavenew[i,j][0], 0, wavenew[i,j][1]],dt=ti.f32)*color)/brightness + potential*ti.Vector([54, 14, 97])*ti.abs(V[i,j]/V_char)/255 
+        pixels[i,j] = ((1-color)*(wavenew[i,j][0]**2 + wave[i,j][1]*wavenew[i,j][1]) + ti.Vector([wavenew[i,j][0], 0, wavenew[i,j][1]],dt=ti.f32)*color)/brightness + potential*(ti.Vector([0, 14, 97]) + sign(V[i,j])*ti.Vector([54, 0,0]) )*ti.abs(V[i,j]/V_char)/255 
 
 
 # Implement some antialiasing
@@ -80,18 +87,22 @@ def downsample():
         pixelsL[i, j] = acc / (upscale * upscale)
 
 if __name__ == "__main__":
-    v       = 100
-    s       = 8e1/n
+    v       = 80
+    s       = 1e-1
+    choice  = 0
+    num     = 4
     color   = False
     potent  = False
     held_P  = False
     held_S  = False
     held_R  = False
+    held_ra = False
+    held_la = False
     bright  = 1
     brightC = 0.1
 
     initialize(0.6,0,-v,0,s,s)
-    fill_V(V,n)
+    fill_V(V,choice)
 
     while window.running:
         if window.is_pressed(ti.GUI.LMB):
@@ -104,24 +115,35 @@ if __name__ == "__main__":
         if held_S and not window.is_pressed(ti.GUI.SPACE):
             held_S  = False
             color   = not color
-        
+        held_S = window.is_pressed(ti.GUI.SPACE)
+
         if held_P and not window.is_pressed('p'):
             held_P  = False
             potent  = not potent
+        held_P = window.is_pressed('p')
 
         if held_R and not window.is_pressed('r'):
             held_R  = False
             initialize(0.6,0,-v,0,s,s)
-        
+        held_R = window.is_pressed('r')
+
         if window.is_pressed(ti.GUI.UP):
             if bright>1-brightC: bright -= brightC
 
         if window.is_pressed(ti.GUI.DOWN):
             if bright<100: bright += brightC
 
-        held_S = window.is_pressed(ti.GUI.SPACE)
-        held_P = window.is_pressed('p')
-        held_R = window.is_pressed('r')
+        if held_ra and not window.is_pressed(ti.GUI.RIGHT):
+            held_ra = False
+            choice  = (choice + 1)%num
+            fill_V(V,choice)
+        held_ra = window.is_pressed(ti.GUI.RIGHT)
+
+        if held_la and not window.is_pressed(ti.GUI.LEFT):
+            held_la = False
+            choice  = (choice - 1)%num
+            fill_V(V,choice)
+        held_la = window.is_pressed(ti.GUI.LEFT)
 
         draw(n,dt,dx,color,potent,bright)
 
