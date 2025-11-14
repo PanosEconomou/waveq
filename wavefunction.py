@@ -34,25 +34,25 @@ def fill_V(V:ti.template(),i:int):
         if i==2:
             V[x,y] = V_char*(X**2 + Y**2)
         if i==3:
-            V[x,y] = V_char/4*(cos(X*(2.1*pi)) + cos(Y*(2.1*pi))) + V_char*(X**2 + Y**2)**2
+            V[x,y] = V_char/4*(cos(X*(2*pi)) + cos(Y*(2*pi))) #+ V_char*(X**2 + Y**2)**2
 
 @ti.kernel
 def initialize(x:float, y:float, px:float, py:float, sx:float, sy:float):
-    for i,j in ti.ndrange((1, n-1), (1, n-1)):
+    for i,j in wavenew:# ti.ndrange((1, n-1), (1, n-1)):
         psi = exp(-((2*i-n)/n - x)**2/(2*sx**2) - ((2*j-n)/n - y)**2/(2*sy**2))/(2*pi*sx*sy)
         wave[i,j][0] = psi * cos((2*i-n)/n*px + (2*j-n)/n*py)
         wave[i,j][1] = psi * sin((2*i-n)/n*px + (2*j-n)/n*py)
     
     h = dt/(4*dx*dx)
     for i,j in wave:
-        if i!=0 and j!=0 and i!=n-1 and j!=n-1: 
-            wave[i,j][1] += (- 4*h - dt*V[i,j]/2)*wave[i,j][0] + h*(wave[i+1,j][0] + wave[i-1,j][0] + wave[i,j+1][0] + wave[i,j-1][0])
+        # if i!=0 and j!=0 and i!=n-1 and j!=n-1: 
+        wave[i,j][1] += (- 4*h - dt*V[i,j]/2)*wave[i,j][0] + h*(wave[(i+1)%(n),j][0] + wave[(i-1)%(n),j][0] + wave[i,(j+1)%n][0] + wave[i,(j-1)%n][0])
 
 
 @ti.kernel
 def add_pulse(x:ti.f32,y:ti.f32,sx:ti.f32,sy:ti.f32,p:ti.f32):
     C = 10000
-    for i,j in ti.ndrange((1, n-1), (1, n-1)):
+    for i,j in wave:# ti.ndrange((1, n-1), (1, n-1)):
         X = (2*i-n)/n - x
         Y = (2*j-n)/n - y
         R = (X**2 + Y**2)**0.5 
@@ -66,11 +66,11 @@ def add_pulse(x:ti.f32,y:ti.f32,sx:ti.f32,sy:ti.f32,p:ti.f32):
 def draw(n:int, dt:float, dx:float, color:bool, potential:bool, brightness:float):
     h = dt/(2*dx*dx)
     for step in ti.static(range(steps)):
-        for i,j in ti.ndrange((1, n-1), (1, n-1)):
-            wavenew[i,j][0] = wave[i,j][0] - (- 4*h - dt*V[i,j])*wave[i,j][1] - h*(wave[i+1,j][1] + wave[i-1,j][1] + wave[i,j+1][1] + wave[i,j-1][1])
+        for i,j in wavenew: #ti.ndrange((1, n-1), (1, n-1)):
+            wavenew[i,j][0] = wave[i,j][0] - (- 4*h - dt*V[i,j])*wave[i,j][1] - h*(wave[(i+1)%(n),j][1] + wave[(i-1)%(n),j][1] + wave[i,(j+1)%n][1] + wave[i,(j-1)%n][1])
         
-        for i,j in ti.ndrange((1, n-1), (1, n-1)):
-            wavenew[i,j][1] = wave[i,j][1] + (- 4*h - dt*V[i,j])*wavenew[i,j][0] + h*(wavenew[i+1,j][0] + wavenew[i-1,j][0] + wavenew[i,j+1][0] + wavenew[i,j-1][0])
+        for i,j in wavenew: #ti.ndrange((1, n-1), (1, n-1)):
+            wavenew[i,j][1] = wave[i,j][1] + (- 4*h - dt*V[i,j])*wavenew[i,j][0] + h*(wavenew[(i+1)%(n),j][0] + wavenew[(i-1)%(n),j][0] + wavenew[i,(j+1)%n][0] + wavenew[i,(j-1)%n][0])
             wave[i,j]   = wavenew[i,j]
 
     for i,j in pixels:
